@@ -43,21 +43,50 @@ module.exports.signupUser = async (req, res) => {
   }
 };
 
+// module.exports.loginUser = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+//     let user = await userModel.findOne({ email });
+//     let isPswdCorrect = await bcrypt.compare(password, user?.password || "");
+//     if (isPswdCorrect) {
+//       generateTokenAndSetCookie({ id: user._id }, res);
+//       res.status(200).send(user).select("-password");
+//     } else {
+//       res.status(400).send("email or password is incorrect");
+//     }
+//   } catch (error) {
+//     console.log("error in login user :>> ", error.message);
+//   }
+// };
 module.exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    let user = await userModel.findOne({ email });
-    let isPswdCorrect = await bcrypt.compare(password, user?.password || "");
+    
+    // Find user and exclude the password field from the returned document
+    let user = await userModel.findOne({ email }).select("+password");
+
+    if (!user) {
+      return res.status(400).send("email or password is incorrect");
+    }
+
+    // Compare the password
+    let isPswdCorrect = await bcrypt.compare(password, user.password);
     if (isPswdCorrect) {
+      // Exclude the password from the user object before sending it in the response
+      user.password = undefined;
+
       generateTokenAndSetCookie({ id: user._id }, res);
-      res.status(200).send(user).select("-password");
+      return res.status(200).send(user);
     } else {
-      res.status(400).send("email or password is incorrect");
+      return res.status(400).send("email or password is incorrect");
     }
   } catch (error) {
     console.log("error in login user :>> ", error.message);
+    res.status(500).send("An error occurred during login.");
   }
 };
+
+
 
 module.exports.logoutUser = (req, res) => {
   try {
