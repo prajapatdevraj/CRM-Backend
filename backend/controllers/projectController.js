@@ -60,10 +60,20 @@ module.exports.createProject = async (req, res) => {
         .json({ message: "Error uploading file", error: err.message });
     }
     try {
-      const { title, description, participantEmails, status } = req.body;
-      console.log("req.body :>> ", req.body);
+      // Parse participantEmails which is a JSON string from FormData
+      const {
+        title,
+        description,
+        participants: participantEmails,
+        status,
+      } = req.body;
+
+      // Since 'participantEmails' comes as a JSON string, we parse it into an array
+      const parsedParticipantEmails = JSON.parse(participantEmails);
+
+      // Find participants from the User collection based on their email
       const participants = await User.find({
-        email: { $in: participantEmails },
+        email: { $in: parsedParticipantEmails },
       });
 
       let posterImage = null;
@@ -73,10 +83,11 @@ module.exports.createProject = async (req, res) => {
         };base64,${req.file.buffer.toString("base64")}`;
       }
 
+      // Create the new project
       const project = new Project({
         title,
         description,
-        participants: participants.map((user) => user._id),
+        participants: participants.map((user) => user._id), // Map to participant IDs
         posterImage,
         status,
       });
@@ -92,6 +103,8 @@ module.exports.createProject = async (req, res) => {
 };
 
 module.exports.updateProject = async (req, res) => {
+  console.log("req.body in update function :>> ", req.body);
+
   upload.single("posterImage")(req, res, async (err) => {
     if (err) {
       return res
@@ -100,11 +113,16 @@ module.exports.updateProject = async (req, res) => {
     }
 
     try {
-      const { title, description, participantEmails, status } = req.body;
-
+      const {
+        title,
+        description,
+        participants: participantEmails,
+        status,
+      } = req.body;
+      const parsedParticipantEmails = JSON.parse(participantEmails);
       // Find users by email
       const participants = await User.find({
-        email: { $in: participantEmails.split(",") },
+        email: { $in: parsedParticipantEmails },
       });
       console.log("req.body in update :>> ", req.body);
       let updateData = {
